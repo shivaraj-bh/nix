@@ -6,6 +6,7 @@
 #include "tarfile.hh"
 #include "store-api.hh"
 #include "url-parts.hh"
+#include "posix-source-accessor.hh"
 
 #include "fetch-settings.hh"
 
@@ -210,7 +211,12 @@ struct MercurialInputScheme : InputScheme
                     return files.count(file);
                 };
 
-                auto storePath = store->addToStore(input.getName(), actualPath, FileIngestionMethod::Recursive, htSHA256, filter);
+                PosixSourceAccessor accessor;
+                auto storePath = store->addToStore(
+                    input.getName(),
+                    accessor, CanonPath { actualPath },
+                    FileIngestionMethod::Recursive, htSHA256, {},
+                    filter);
 
                 return {std::move(storePath), input};
             }
@@ -246,7 +252,7 @@ struct MercurialInputScheme : InputScheme
         };
 
         if (input.getRev()) {
-            if (auto res = getCache()->lookup(store, getLockedAttrs()))
+            if (auto res = getCache()->lookup(*store, getLockedAttrs()))
                 return makeResult(res->first, std::move(res->second));
         }
 
@@ -259,7 +265,7 @@ struct MercurialInputScheme : InputScheme
             {"ref", *input.getRef()},
         });
 
-        if (auto res = getCache()->lookup(store, unlockedAttrs)) {
+        if (auto res = getCache()->lookup(*store, unlockedAttrs)) {
             auto rev2 = Hash::parseAny(getStrAttr(res->first, "rev"), htSHA1);
             if (!input.getRev() || input.getRev() == rev2) {
                 input.attrs.insert_or_assign("rev", rev2.gitRev());
@@ -305,7 +311,7 @@ struct MercurialInputScheme : InputScheme
         auto revCount = std::stoull(tokens[1]);
         input.attrs.insert_or_assign("ref", tokens[2]);
 
-        if (auto res = getCache()->lookup(store, getLockedAttrs()))
+        if (auto res = getCache()->lookup(*store, getLockedAttrs()))
             return makeResult(res->first, std::move(res->second));
 
         Path tmpDir = createTempDir();
@@ -315,7 +321,8 @@ struct MercurialInputScheme : InputScheme
 
         deletePath(tmpDir + "/.hg_archival.txt");
 
-        auto storePath = store->addToStore(name, tmpDir);
+        PosixSourceAccessor accessor;
+        auto storePath = store->addToStore(name, accessor, CanonPath { tmpDir });
 
         Attrs infoAttrs({
             {"rev", input.getRev()->gitRev()},
@@ -324,14 +331,14 @@ struct MercurialInputScheme : InputScheme
 
         if (!_input.getRev())
             getCache()->add(
-                store,
+                *store,
                 unlockedAttrs,
                 infoAttrs,
                 storePath,
                 false);
 
         getCache()->add(
-            store,
+            *store,
             getLockedAttrs(),
             infoAttrs,
             storePath,
