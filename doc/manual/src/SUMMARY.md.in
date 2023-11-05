@@ -20,6 +20,7 @@
   - [File System Object](store/file-system-object.md)
   - [Store Object](store/store-object.md)
   - [Store Path](store/store-path.md)
+    - [Exact Store Path Specification](store/store-path/exact-spec.md)
 - [Nix Language](language/index.md)
   - [Data Types](language/values.md)
   - [Language Constructs](language/constructs.md)
