@@ -169,7 +169,7 @@ static void mkOutputString(
    argument. */
 static void import(EvalState & state, const PosIdx pos, Value & vPath, Value * vScope, Value & v)
 {
-    auto path = realisePath(state, pos, vPath);
+    auto path = realisePath(state, pos, vPath).resolveSymlinks();
     auto path2 = path.path.abs();
 
     // FIXME
@@ -333,7 +333,7 @@ extern "C" typedef void (*ValueInitializer)(EvalState & state, Value & v);
 /* Load a ValueInitializer from a DSO and return whatever it initializes */
 void prim_importNative(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
-    auto path = realisePath(state, pos, *args[0]);
+    auto path = realisePath(state, pos, *args[0]).resolveSymlinks();
 
     std::string sym(state.forceStringNoCtx(*args[1], pos, "while evaluating the second argument passed to builtins.importNative"));
 
@@ -1624,7 +1624,7 @@ static RegisterPrimOp primop_dirOf({
 /* Return the contents of a file as a string. */
 static void prim_readFile(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
-    auto path = realisePath(state, pos, *args[0]);
+    auto path = realisePath(state, pos, *args[0]).resolveSymlinks();
     auto s = path.readFile();
     if (s.find((char) 0) != std::string::npos)
         state.debugThrowLastTrace(Error("the contents of the file '%1%' cannot be represented as a Nix string", path));
@@ -1761,7 +1761,7 @@ static void prim_hashFile(EvalState & state, const PosIdx pos, Value * * args, V
             .errPos = state.positions[pos]
         }));
 
-    auto path = realisePath(state, pos, *args[1]);
+    auto path = realisePath(state, pos, *args[1]).resolveSymlinks();
 
     v.mkString(hashString(*ht, path.readFile()).to_string(HashFormat::Base16, false));
 }
@@ -1806,7 +1806,7 @@ static RegisterPrimOp primop_readFileType({
 /* Read a directory (without . or ..) */
 static void prim_readDir(EvalState & state, const PosIdx pos, Value * * args, Value & v)
 {
-    auto path = realisePath(state, pos, *args[0]);
+    auto path = realisePath(state, pos, *args[0]).resolveSymlinks();
 
     // Retrieve directory entries for all nodes in a directory.
     // This is similar to `getFileType` but is optimized to reduce system calls
