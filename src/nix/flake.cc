@@ -18,6 +18,7 @@
 #include "markdown.hh"
 #include "users.hh"
 #include "flake-schemas.hh"
+#include "value-to-json.hh"
 
 #include <nlohmann/json.hpp>
 #include <queue>
@@ -781,6 +782,13 @@ struct CmdFlakeShow : FlakeCommand, MixJSON, flake_schemas::MixFlakeSchemas
 
                         if (auto drv = flake_schemas::derivation(leaf))
                             obj.emplace("derivationName", drv->getAttr(state->sName)->getString());
+
+                        // TODO: Add a function in flake-schemas.hh to handle this
+                        if (auto value = leaf->maybeGetAttr("value")) {
+                            auto v = value->forceValue();
+                            NixStringContext context;
+                            obj.emplace("value", printValueAsJSON(*state, true, v, noPos, context, false));
+                        }
 
                         // FIXME: add more stuff
                     },
